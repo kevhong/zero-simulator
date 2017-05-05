@@ -43,7 +43,7 @@ def evaluate(predictor, eval_params, test_file, train_amt,
                 unknown = vals[eval_point:]
                 # print unknown
 
-                guesses = predictor.predict(know)
+                guesses = predictor.predict(know, eval_params)
 
                 found = 0
                 for p in guesses:

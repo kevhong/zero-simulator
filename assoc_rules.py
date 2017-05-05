@@ -1,25 +1,12 @@
 import os
 import pickle
 import csv
+import utils
 
 from collections import defaultdict
 
 from page_predictor import page_predictor
 
-
-def convert(xct_page_access_file, output_file):
-    with open(xct_page_access_file, 'rb') as csvfile, open(output_file, 'w') as outfile:
-        reader = csv.reader(csvfile, delimiter=',', quotechar='|')
-        for row in reader:
-            to_write = []
-            written = set()
-            for item in row[1:]:
-                if item not in written:
-                    to_write.append(item)
-                    written.add(item)
-
-            outfile.write(reduce(lambda x, y: str(x) + " " + str(y),
-                                 to_write) + '\n')
 
 
 def train_model(src, minsup, minconf):
@@ -67,6 +54,7 @@ class AssocRulesPredictor(page_predictor):
         rules_file = train_model(src, min_sup, min_conf)
         self.rules_file = rules_file
         self.rules_dic = create_dict(rules_file)
+        self.unique = True
 
     def predict(self, seen, eval_params):
         """
@@ -75,7 +63,7 @@ class AssocRulesPredictor(page_predictor):
         :return: set of predicted pages
         """
         min_conf = eval_params.get('min_conf', 0.2)
-        print min_conf
+
 
         def get_all_subseq(input_string):
             length = len(input_string)
@@ -86,10 +74,12 @@ class AssocRulesPredictor(page_predictor):
 
         guesses = set()
 
+        seen_pages = list(set(seen))
+
         # keys always in increasing order, so we generate all possible
         to_guess = map(lambda g:
                        reduce(lambda x, y: "%s %d" % (x, y), g, "").strip(),
-                       get_all_subseq(seen))
+                       get_all_subseq(seen_pages))
 
         for g in to_guess:
             to_add = flatten(
@@ -102,7 +92,33 @@ class AssocRulesPredictor(page_predictor):
         for x in seen:  # don't guess part of what we have already seen
             guesses.discard(x)
 
+        #guesses = filter(lambda x: x < 100, guesses)
+
         return guesses
 
     def eval_param_string(self, eval_params):
         return "min_conf: {:.2f}" % eval_params.get('min_conf')
+
+
+if __name__ == '__main__':
+    # predictor_t = AssocRulesPredictor('test', 'spmf_run3_train_100_groupedBy_1', 5, 20)
+    # t1 = "3 4 14 5 81633 86256 12 76204 81226 13 133340 77826 77547 11 123978 186896 192363 27527 7402 8847 7328 127332 126518 121619 120949 51623 64068 62036 60741 101536 116751 111956 111221 116721 111109 71592 68856 68258 49949 48946 47711 130815 126195 125238 1536 2698 1574 120746 116863 115130 108751 104992 103390 27524 31453 32021 30374 9 131420 191324 10 80820 95458 8 128082 191126"
+    # t2 = "3 4 14 5 40762 45266 12 127332 126518 13 133340 91258 90971 11 123978 57347 192237 51623 64068 33962 32908 101536 116751 82300 81665 116721 81538 71592 40162 39774 192417 49949 21428 20303 130815 95827 95117 27527 1536 147268 146518 120746 86812 85444 108751 75438 74195 27524 31453 3173 2899 48040 19233 18478 19965 166080 164549 9 50394 191891 10 43572 49027 8 128082 191113"
+    # t3 = "6 132331 88718 5 77024 78301 10 122561 81430 9 64770 87424 184152 186291 11 123978 184838 186397"
+    # print predictor_t.eval_line_once(t1, {'min_conf': .20}, 5)
+    # print predictor_t.eval_line_once(t2, {'min_conf': .20}, 5)
+    # print predictor_t.eval_line_once(t3, {'min_conf': .20}, 5)
+
+
+    m_sup_s = 20
+    m_conf_s = 30
+    for m_sup_s in [20, 10, 5, 3]:
+        for test_part in [0, 0.2, 0.4, 0.5, 0.7, 0.8]:
+            test, train = utils.split_file("spmf_run5.txt", test_part)
+            if test_part == 0:
+                test = train
+
+            train_grouped = utils.create_grouping(train, 1)
+
+            model = train_model(train_grouped, m_sup_s, m_conf_s)
+            rules_dict = create_dict(model)

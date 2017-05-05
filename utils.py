@@ -1,5 +1,6 @@
 import os
 import csv
+import numpy as np
 
 def create_grouping(src, groupBy=1):
     out_fn = os.path.join('exp_files',
@@ -13,6 +14,7 @@ def create_grouping(src, groupBy=1):
         count = 0
         to_write = []
         written = set()
+        next(reader)
         for row in reader:
             for item in row:
                 if item not in written:
@@ -36,6 +38,8 @@ def split_file(src, cutoff):
         with open(src, 'rb') as src_file, open(test_fn, 'w') as test_file, \
                 open(train_fn, 'w') as train_file:
 
+            next(src_file)
+
             for line in src_file:
                 r = np.random.uniform()
                 if r >= cutoff:
@@ -45,13 +49,22 @@ def split_file(src, cutoff):
 
     return test_fn, train_fn
 
-def convert_to_spaces(xct_page_access_file, output_file):
-    with open(xct_page_access_file, 'rb') as csvfile, open(output_file, 'w') as outfile:
+def convert_to_spaces(xct_page_access_file, output_file, spmf_file):
+    with open(xct_page_access_file, 'rb') as csvfile, open(output_file, 'w') as outfile, \
+            open(spmf_file, 'w') as spmf:
         reader = csv.reader(csvfile, delimiter=',', quotechar='|')
         for row in reader:
             to_write = []
+            written = set()
+            to_write_set = []
             for item in row[1:]:
-                to_write.append(item)
+                pid = item.split("-")[0]
+                to_write.append(pid)
+                if pid not in written:
+                    to_write_set.append(pid)
+                    written.add(pid)
 
             outfile.write(reduce(lambda x, y: str(x) + " " + str(y),
                                  to_write) + '\n')
+            spmf.write(reduce(lambda x, y: str(x) + " " + str(y),
+                                 to_write_set) + '\n')
