@@ -56,12 +56,13 @@ class AssocRulesPredictor(page_predictor):
         self.rules_dic = create_dict(rules_file)
         self.unique = True
 
-    def predict(self, seen, eval_params):
-        """
+    def predict(self, seen, eval_params, all=False):
+        '''
         :param seen: list of integers of pids
         :param eval_params:
         :return: set of predicted pages
-        """
+        '''
+
         min_conf = eval_params.get('min_conf', 0.2)
 
 
@@ -89,8 +90,9 @@ class AssocRulesPredictor(page_predictor):
             for t_a in set(to_add):
                 guesses.add(t_a)
 
-        for x in seen:  # don't guess part of what we have already seen
-            guesses.discard(x)
+        if all:
+            for x in seen:  # don't guess part of what we have already seen
+                guesses.discard(x)
 
         #guesses = filter(lambda x: x < 100, guesses)
 
@@ -99,26 +101,28 @@ class AssocRulesPredictor(page_predictor):
     def eval_param_string(self, eval_params):
         return "min_conf: {:.2f}" % eval_params.get('min_conf')
 
+    def dict_stats(self):
+        unique = set()
+        print len(self.rules_dic)
+        print self.rules_dic
+        for x,y in self.rules_dic.iteritems():
+            for k in x.split(" "):
+                #print k
+                unique.add(k)
+            for t in y:
+                print y
+                for k in t[0].split(" "):
+                    #print k
+                    unique.add(k)
+
+        return len(unique)
+
 
 if __name__ == '__main__':
-    # predictor_t = AssocRulesPredictor('test', 'spmf_run3_train_100_groupedBy_1', 5, 20)
-    # t1 = "3 4 14 5 81633 86256 12 76204 81226 13 133340 77826 77547 11 123978 186896 192363 27527 7402 8847 7328 127332 126518 121619 120949 51623 64068 62036 60741 101536 116751 111956 111221 116721 111109 71592 68856 68258 49949 48946 47711 130815 126195 125238 1536 2698 1574 120746 116863 115130 108751 104992 103390 27524 31453 32021 30374 9 131420 191324 10 80820 95458 8 128082 191126"
-    # t2 = "3 4 14 5 40762 45266 12 127332 126518 13 133340 91258 90971 11 123978 57347 192237 51623 64068 33962 32908 101536 116751 82300 81665 116721 81538 71592 40162 39774 192417 49949 21428 20303 130815 95827 95117 27527 1536 147268 146518 120746 86812 85444 108751 75438 74195 27524 31453 3173 2899 48040 19233 18478 19965 166080 164549 9 50394 191891 10 43572 49027 8 128082 191113"
-    # t3 = "6 132331 88718 5 77024 78301 10 122561 81430 9 64770 87424 184152 186291 11 123978 184838 186397"
-    # print predictor_t.eval_line_once(t1, {'min_conf': .20}, 5)
+    predictor_t = AssocRulesPredictor('test', 'spmf_run3_train_100_groupedBy_1', 5, 20)
+    t1 = "3 4 14 5 88053 88051 12 76204 79258 13 133345 97791 96083 11 123978 184838 192367 27524 36443 60296 57997 27527 6048 33940 30875 19083 43617 42315 16070 40424 39673 94752 133340 111653 109662 127332 137246 151218 147793 150221 158521 159760 6341 31011 126220 140374 137813 131812 144043 142903 13966 37793 9 64770 191487 10 122561 79816 8 186709 190826"
+    print predictor_t.eval_line_once(t1, {'min_conf': .20}, 5)
+    print predictor_t.dict_stats()
     # print predictor_t.eval_line_once(t2, {'min_conf': .20}, 5)
     # print predictor_t.eval_line_once(t3, {'min_conf': .20}, 5)
 
-
-    m_sup_s = 20
-    m_conf_s = 30
-    for m_sup_s in [20, 10, 5, 3]:
-        for test_part in [0, 0.2, 0.4, 0.5, 0.7, 0.8]:
-            test, train = utils.split_file("spmf_run5.txt", test_part)
-            if test_part == 0:
-                test = train
-
-            train_grouped = utils.create_grouping(train, 1)
-
-            model = train_model(train_grouped, m_sup_s, m_conf_s)
-            rules_dict = create_dict(model)
